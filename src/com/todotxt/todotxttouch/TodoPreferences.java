@@ -80,6 +80,13 @@ public class TodoPreferences {
 		//dump();
 	}
 
+
+	/*
+	 * 
+	 *  Accessor methods for preference keys go here 
+	 *
+	 */
+	
 	public String prepend_date_pref_key() {
 		return prepend_date_pref_key;
 	}
@@ -88,6 +95,17 @@ public class TodoPreferences {
 		return periodic_sync_pref_key;
 	}
 
+	public String todo_txt_path_key() {
+		return TODOTXTPATH_key;
+	}
+
+
+	/*
+	 * 
+	 *  Accessor methods for preference values go here 
+	 *
+	 */
+	
 	public String getAccessToken() {
 		return m_prefs.getString(PREF_ACCESSTOKEN_KEY, null);
 	}
@@ -224,12 +242,27 @@ public class TodoPreferences {
 		return m_prefs.getString(TODOTXTPATH_key, TODOTXTPATH_defaultPath);
 	}
 
+
+	/*
+	 * 
+	 *  Utility methods go here 
+	 *
+	 */
+	
 	public void clear() {
 		Editor editor = m_prefs.edit();
 		editor.clear();
 		editor.commit();
 	}
 	
+	public void registerOnSharedPreferenceChangeListener (SharedPreferences.OnSharedPreferenceChangeListener listener) {
+		m_prefs.registerOnSharedPreferenceChangeListener(listener);
+	}
+
+	public void unregisterOnSharedPreferenceChangeListener (SharedPreferences.OnSharedPreferenceChangeListener listener) {
+		m_prefs.unregisterOnSharedPreferenceChangeListener(listener);
+	}
+
 	public void dump() {
 		Map<String, ?> keys = m_prefs.getAll();
 
