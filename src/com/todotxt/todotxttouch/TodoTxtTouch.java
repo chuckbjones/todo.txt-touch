@@ -375,6 +375,8 @@ public class TodoTxtTouch extends SherlockListActivity implements
 
 		if (force || firstrun) {
 			Log.i(TAG, "Initializing app");
+			m_app.m_prefs.clearState();
+			taskBag.clear();
 			syncClient(true);
 			m_app.m_prefs.storeFirstRun(false);
 		} else {
@@ -438,9 +440,8 @@ public class TodoTxtTouch extends SherlockListActivity implements
 	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
 			String key) {
 		Log.v(TAG, "onSharedPreferenceChanged key=" + key);
-		if (m_app.m_prefs.todo_txt_path_key().equals(key)) {
+		if (m_app.m_prefs.todo_path_key().equals(key)) {
 			// file location changed. delete old file, then force a pull
-			taskBag.clear();
 			initializeTasks(true);
 		} else if (m_app.m_prefs.periodic_sync_pref_key().equals(key) && !m_app.m_prefs.isManualModeEnabled()) {
 			// auto sync enabled. force a sync

@@ -22,47 +22,38 @@
  */
 package com.todotxt.todotxttouch;
 
-import com.todotxt.todotxttouch.util.Util;
-
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.DialogInterface.OnCancelListener;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.graphics.Color;
 import android.net.Uri;
-import android.opengl.Visibility;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
-import android.preference.EditTextPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceScreen;
 import android.text.Spannable;
-import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.view.inputmethod.InputMethodManager;
 
 public class Preferences extends PreferenceActivity {
 	final static String TAG = Preferences.class.getSimpleName();
 
 	private Preference aboutDialog;
 	private Preference logoutDialog;
-	private EditTextPreference filePreference;
+	private TodoLocationPreference mLocationPreference;
 	private ListPreference periodicSync;
 	private static final int ABOUT_DIALOG = 1;
 	private static final int LOGOUT_DIALOG = 2;
 	TodoApplication m_app;
 
 	private String version;
-	private boolean confirm = true;
 	
 	@SuppressWarnings("deprecation")
 	@Override
@@ -75,9 +66,8 @@ public class Preferences extends PreferenceActivity {
 				.prepend_date_pref_key())).setChecked(m_app.m_prefs
 				.isPrependDateEnabled());
 
-
-		filePreference = (EditTextPreference)findPreference(m_app.m_prefs.todo_txt_path_key());
-		setupFilePreference(m_app.m_prefs.needToPush());
+		mLocationPreference = (TodoLocationPreference)findPreference(m_app.m_prefs.todo_path_key());
+		mLocationPreference.setDisplayWarning(m_app.m_prefs.needToPush());
 		
 		PackageInfo packageInfo;
 		try {
@@ -104,26 +94,6 @@ public class Preferences extends PreferenceActivity {
 						return true;
 					}
 				});
-	}
-
-	private void setupFilePreference(boolean showWarning) {
-		if (showWarning) {
-			filePreference.getEditText().setVisibility(View.GONE);
-			filePreference.setDialogMessage("You one crazy muthafucka!");
-			filePreference.setPositiveButtonText("I'm feeling dangerous!");
-			((AlertDialog)filePreference.getDialog()).getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					// TODO Auto-generated method stub
-					// if in warning mode, switch to edit mode
-					// if in edit mode, call super (need to save it off)
-				}
-			});
-		} else {
-			filePreference.getEditText().setVisibility(View.VISIBLE);
-			filePreference.setDialogMessage(null);
-			filePreference.setPositiveButtonText("OK");
-		}
 	}
 
 	private void setPeriodicSummary(Object newValue) {
@@ -156,7 +126,7 @@ public class Preferences extends PreferenceActivity {
 	}
 
 	@Override
-	protected Dialog onCreateDialog(int id) {
+	protected Dialog onCreateDialog(final int id) {
 		if (id == ABOUT_DIALOG) {
 			AlertDialog.Builder aboutAlert = new AlertDialog.Builder(this);
 			aboutAlert.setTitle("Todo.txt v" + version);
@@ -177,17 +147,25 @@ public class Preferences extends PreferenceActivity {
 						public void onClick(DialogInterface arg0, int arg1) {
 						}
 					});
-			return aboutAlert.show();
+			aboutAlert.setOnCancelListener(new OnCancelListener() {
+				@SuppressWarnings("deprecation")
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					removeDialog(id);
+				}
+			});
+			return aboutAlert.create();
 		} else if (id == LOGOUT_DIALOG) {
 			AlertDialog.Builder logoutAlert = new AlertDialog.Builder(this);
 			logoutAlert.setTitle(R.string.areyousure);
 			SpannableStringBuilder ss = new SpannableStringBuilder();
 			if (m_app.m_prefs.needToPush()) {
-				ss.append("\n\nYou have local changes to your todo.txt file! If you log out, they will be lost!");
+				ss.append(getString(R.string.dropbox_logout_warning));
 				ss.setSpan(new ForegroundColorSpan(Color.RED), 0, ss.length(),
 					Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+				ss.append("\n\n");
 			}
-			ss.insert(0, getString(R.string.dropbox_logout_explainer));
+			ss.append(getString(R.string.dropbox_logout_explainer));
 			logoutAlert.setMessage(ss);
 			logoutAlert.setPositiveButton(R.string.dropbox_logout_pref_title,
 					new DialogInterface.OnClickListener() {
@@ -206,7 +184,14 @@ public class Preferences extends PreferenceActivity {
 						}
 					});
 			logoutAlert.setNegativeButton(R.string.cancel, null);
-			return logoutAlert.show();
+			logoutAlert.setOnCancelListener(new OnCancelListener() {
+				@SuppressWarnings("deprecation")
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					removeDialog(id);
+				}
+			});
+			return logoutAlert.create();
 		}
 		return null;
 	}

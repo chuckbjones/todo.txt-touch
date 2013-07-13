@@ -58,14 +58,14 @@ public class TodoPreferences {
 	public static final String PREF_FILTER_SUMMARY = "filter_summary";
 
 	/* Localizable defaults that should be defined in strings.xml */
-	private String TODOTXTPATH_defaultPath;
+	private String todo_path_default;
 
 	/*
 	 * Keys that are used in resources should be defined in keys.xml and read
 	 * into variables in the constructor
 	 */
 	private String auto_archive_pref_key;
-	private String TODOTXTPATH_key;
+	private String todo_path_key;
 	private String prepend_date_pref_key;
 	private String periodic_sync_pref_key;
 
@@ -75,8 +75,8 @@ public class TodoPreferences {
 		auto_archive_pref_key = c.getString(R.string.auto_archive_pref_key);
 		periodic_sync_pref_key = c.getString(R.string.periodic_sync_pref_key);
 		prepend_date_pref_key = c.getString(R.string.prepend_date_pref_key);
-		TODOTXTPATH_key = c.getString(R.string.TODOTXTPATH_key);
-		TODOTXTPATH_defaultPath = c.getString(R.string.TODOTXTPATH_defaultPath);
+		todo_path_key = c.getString(R.string.todo_path_key);
+		todo_path_default = c.getString(R.string.todo_path_default);
 		//dump();
 	}
 
@@ -95,8 +95,8 @@ public class TodoPreferences {
 		return periodic_sync_pref_key;
 	}
 
-	public String todo_txt_path_key() {
-		return TODOTXTPATH_key;
+	public String todo_path_key() {
+		return todo_path_key;
 	}
 
 
@@ -239,7 +239,7 @@ public class TodoPreferences {
 	}
 
 	public String getTodoFilePath() {
-		return m_prefs.getString(TODOTXTPATH_key, TODOTXTPATH_defaultPath);
+		return m_prefs.getString(todo_path_key, todo_path_default);
 	}
 
 
@@ -248,7 +248,16 @@ public class TodoPreferences {
 	 *  Utility methods go here 
 	 *
 	 */
-	
+
+	public void clearState() {
+		Editor editor = m_prefs.edit();
+		editor.remove(PREF_FIRSTRUN);
+		editor.remove(PREF_DONE_REV);
+		editor.remove(PREF_TODO_REV);
+		editor.remove(PREF_NEED_TO_PUSH);
+		editor.commit();
+	}
+
 	public void clear() {
 		Editor editor = m_prefs.edit();
 		editor.clear();
