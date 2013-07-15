@@ -24,13 +24,16 @@ package com.todotxt.todotxttouch.remote;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 import android.content.Intent;
 import android.os.Environment;
 import android.util.Log;
 
 import com.dropbox.client2.DropboxAPI;
+import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.android.AndroidAuthSession;
+import com.dropbox.client2.exception.DropboxException;
 import com.dropbox.client2.session.AccessTokenPair;
 import com.dropbox.client2.session.AppKeyPair;
 import com.dropbox.client2.session.Session.AccessType;
@@ -270,6 +273,25 @@ class DropboxRemoteClient implements RemoteClient {
 	@Override
 	public boolean isAvailable() {
 		return Util.isOnline(todoApplication.getApplicationContext());
+	}
+
+	@Override
+	public List<RemoteFolder> getSubFolders(String path) {
+		List<RemoteFolder> results = new ArrayList<RemoteFolder>();
+		try {
+			Log.d(TAG, "getting file listiing for path " + path);
+			Entry metadata = dropboxApi.metadata(path, 0, null, true, null);
+			Log.d(TAG, "num entries returned: " + metadata.contents.size());
+			for (Entry e : metadata.contents) {
+				if(e.isDir && !e.isDeleted) {
+					results.add(new DropboxRemoteFolder(e));
+				}
+			}
+		} catch (DropboxException e) {
+			Log.e(TAG, "Error getting folders for path: " + path);
+			throw new RemoteException("Failed to get folder listing from Dropbox", e);
+		}
+		return results;
 	}
 
 }

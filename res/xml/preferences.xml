@@ -39,7 +39,7 @@
 
 	<PreferenceCategory android:key="dropbox_settings"
 		android:title="@string/dropbox_settings_header">
-		<com.todotxt.todotxttouch.TodoLocationPreference android:summary="@string/todo_path_summary"
+		<Preference android:summary="@string/todo_path_summary"
 			android:defaultValue="@string/todo_path_default" android:title="@string/todo_path_title"
 			android:key="@string/todo_path_key" />
 		<ListPreference android:key="@string/periodic_sync_pref_key"

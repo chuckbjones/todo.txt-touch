@@ -23,6 +23,7 @@
 package com.todotxt.todotxttouch.remote;
 
 import java.io.File;
+import java.util.List;
 
 public interface RemoteClient {
 
@@ -97,4 +98,5 @@ public interface RemoteClient {
 	 */
 	boolean isAvailable();
 
+	List<RemoteFolder> getSubFolders(String path);
 }
