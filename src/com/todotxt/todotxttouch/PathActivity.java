@@ -5,6 +5,7 @@ import java.util.List;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.content.Intent;
@@ -17,26 +18,38 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockListActivity;
 import com.todotxt.todotxttouch.remote.RemoteFolder;
 
 public class PathActivity extends SherlockListActivity {
+	final static String TAG = PathActivity.class.getSimpleName();
 
 	private static final int ADD_NEW = 1;
+
+	private static PathActivity currentActivityPointer = null;
 
 	private TodoApplication mApp;
 	private Tree<RemoteFolder> mDirectoryTree;
 	private Tree<RemoteFolder> mCurrentSelection;
 
+	private ProgressDialog mProgressDialog = null;
+	String mDialogText = "";
+	Boolean mDialogActive = false;
+
+	private TextView mCurrentFolderTextView;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		currentActivityPointer = this;
 
 		setContentView(R.layout.path_activity);
 
 		mApp = (TodoApplication) getApplication();
+		mCurrentFolderTextView = (TextView) findViewById(R.id.folder_name);
 
 		// Inflate a "Done/Discard" custom action bar view.
 		LayoutInflater inflater = (LayoutInflater) getSupportActionBar()
@@ -76,20 +89,9 @@ public class PathActivity extends SherlockListActivity {
 		setListAdapter(new ArrayAdapter<String>(this,
 				android.R.layout.simple_list_item_1));
 
-		mCurrentSelection = mDirectoryTree = new Tree<RemoteFolder>(
-				new RemoteFolder() {
-					@Override
-					public String getPath() {
-						return "/";
-					}
-
-					@Override
-					public String getName() {
-						return "Dropbox"; // FIXME
-					}
-				});
-
-		populateListView();
+		mDirectoryTree = new Tree<RemoteFolder>(mApp.getRemoteClientManager()
+				.getRemoteClient().getRootFolder());
+		setCurrentSelection(mDirectoryTree);
 	}
 
 	@SuppressWarnings("deprecation")
@@ -97,21 +99,21 @@ public class PathActivity extends SherlockListActivity {
 	protected void onListItemClick(ListView l, View v, int position, long id) {
 		if (position == 0 && mCurrentSelection.getParent() != null) {
 			// go back up to previous directory
-			mCurrentSelection = mCurrentSelection.getParent();
-			populateListView();
+			setCurrentSelection(mCurrentSelection.getParent());
 		} else if (position == l.getAdapter().getCount() - 1) {
 			// add new
 			showDialog(ADD_NEW);
-		} else if (position > 0) {
+		} else {
 			// drill down to this directory
-			mCurrentSelection = mCurrentSelection.getChild(position - 1);
-			populateListView();
+			int index = mCurrentSelection.getParent() == null ? position
+					: position - 1;
+			setCurrentSelection(mCurrentSelection.getChild(index));
 		}
 	}
 
 	class Tree<E> {
 		private Tree<E> parent = null;
-		private List<Tree<E>> children = new ArrayList<Tree<E>>();
+		private List<Tree<E>> children = null;
 		private E data;
 
 		public Tree(E data) {
@@ -125,6 +127,8 @@ public class PathActivity extends SherlockListActivity {
 
 		public Tree<E> addChild(E data) {
 			Tree<E> child = new Tree<E>(this, data);
+			if (children == null)
+				children = new ArrayList<Tree<E>>();
 			children.add(child);
 			return child;
 		}
@@ -137,6 +141,15 @@ public class PathActivity extends SherlockListActivity {
 			return parent;
 		}
 
+		public boolean isLoaded() {
+			return children != null;
+		}
+
+		public void setLoaded() {
+			if (children == null)
+				children = new ArrayList<Tree<E>>();
+		}
+
 		public List<Tree<E>> getChildren() {
 			return children;
 		}
@@ -146,8 +159,14 @@ public class PathActivity extends SherlockListActivity {
 		}
 	}
 
+	private void setCurrentSelection(Tree<RemoteFolder> folder) {
+		mCurrentSelection = folder;
+		mCurrentFolderTextView.setText(folder.getData().getName());
+		populateListView();
+	}
+
 	private void populateListView() {
-		if (mCurrentSelection.getChildren().size() == 0) {
+		if (!mCurrentSelection.isLoaded()) {
 			getRemoteDirectoryListing();
 		} else {
 			populateListView(mCurrentSelection.getChildren());
@@ -160,18 +179,24 @@ public class PathActivity extends SherlockListActivity {
 		adapter.clear();
 		Tree<RemoteFolder> parent = mCurrentSelection.getParent();
 		if (parent != null) {
-			adapter.add(".. up to " + parent.getData().getName());
-		} else {
-			adapter.add("Choose a folder");
+			adapter.add(getString(R.string.todo_path_prev_folder, parent.getData().getName()));
 		}
-		for (Tree<RemoteFolder> folder : list) {
-			adapter.add(folder.getData().getName());
+		if (list != null) {
+			for (Tree<RemoteFolder> folder : list) {
+				adapter.add(folder.getData().getName());
+			}
 		}
-		adapter.add("add new...");
+		adapter.add(getString(R.string.todo_path_add_new));
 	}
 
 	private void getRemoteDirectoryListing() {
 		new AsyncTask<Void, Void, List<RemoteFolder>>() {
+
+			@Override
+			protected void onPreExecute() {
+				showProgressDialog(getString(R.string.todo_path_loading));
+			}
+
 			@Override
 			protected List<RemoteFolder> doInBackground(Void... params) {
 				try {
@@ -181,32 +206,70 @@ public class PathActivity extends SherlockListActivity {
 							.getSubFolders(
 									mCurrentSelection.getData().getPath());
 				} catch (Exception e) {
-					Log.d("PathActivity", "failed to get remote folder list", e);
+					Log.d(TAG, "failed to get remote folder list", e);
 				}
 				return new ArrayList<RemoteFolder>();
 			}
 
 			@Override
 			protected void onPostExecute(List<RemoteFolder> result) {
+				PathActivity.currentActivityPointer.dismissProgressDialog();
 				for (RemoteFolder folder : result) {
 					mCurrentSelection.addChild(folder);
 				}
+				mCurrentSelection.setLoaded();
 				populateListView(mCurrentSelection.getChildren());
 			}
 		}.execute();
+	}
+
+	protected void dismissProgressDialog() {
+		if (mProgressDialog != null) {
+			mProgressDialog.dismiss();
+			mDialogActive = false;
+		}
+	}
+
+	protected ProgressDialog showProgressDialog(String message) {
+		if (mProgressDialog != null) {
+			dismissProgressDialog();
+		}
+		mDialogText = message;
+		mDialogActive = true;
+		return (mProgressDialog = ProgressDialog.show(PathActivity.this,
+				message, getString(R.string.wait_progress), true));
+	}
+
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		outState.putBoolean("DialogActive", mDialogActive);
+		outState.putString("DialogText", mDialogText);
+
+		dismissProgressDialog();
+		super.onSaveInstanceState(outState);
+	}
+
+	@Override
+	protected void onRestoreInstanceState(Bundle state) {
+		super.onRestoreInstanceState(state);
+		mDialogActive = state.getBoolean("DialogActive");
+		mDialogText = state.getString("DialogText");
+		if (mDialogActive) {
+			showProgressDialog(mDialogText);
+		}
 	}
 
 	@Override
 	protected Dialog onCreateDialog(final int id) {
 		if (id == ADD_NEW) {
 			AlertDialog.Builder addNew = new AlertDialog.Builder(this);
-			addNew.setTitle("Add New Folder");
+			addNew.setTitle(R.string.todo_path_add_new_title);
 			final EditText input = new EditText(this);
 			addNew.setView(input);
-			addNew.setPositiveButton("Add",
+			addNew.setPositiveButton(R.string.todo_path_add_new_ok_button,
 					new DialogInterface.OnClickListener() {
 						public void onClick(DialogInterface arg0, int arg1) {
-							mCurrentSelection = mCurrentSelection
+							Tree<RemoteFolder> folder = mCurrentSelection
 									.addChild(new RemoteFolder() {
 										String name = input.getText()
 												.toString();
@@ -225,10 +288,10 @@ public class PathActivity extends SherlockListActivity {
 											return path;
 										}
 									});
-							populateListView();
+							setCurrentSelection(folder);
 						}
 					});
-			addNew.setNegativeButton("Cancel",
+			addNew.setNegativeButton(R.string.todo_path_add_new_cancel_button,
 					new DialogInterface.OnClickListener() {
 						public void onClick(DialogInterface arg0, int arg1) {
 						}

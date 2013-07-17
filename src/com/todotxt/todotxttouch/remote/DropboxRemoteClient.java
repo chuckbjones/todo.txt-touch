@@ -294,4 +294,18 @@ class DropboxRemoteClient implements RemoteClient {
 		return results;
 	}
 
+	@Override
+	public RemoteFolder getRootFolder() {
+		return new RemoteFolder() {
+			@Override
+			public String getPath() {
+				return "/";
+			}
+			@Override
+			public String getName() {
+				return "Dropbox";
+			}
+		};
+	}
+
 }

@@ -85,6 +85,12 @@ You should have received a copy of the GNU General Public License along with Tod
     <string name="todo_path_summary">The Dropbox folder where todo.txt is stored.</string>
     <string name="todo_path_warning">You have local changes to your todo.txt file! If you change the file location, they will be lost!</string>
     <string name="todo_path_warning_override">I\'m feeling dangerous!</string>
+    <string name="todo_path_prev_folder">… Up to %s</string>
+    <string name="todo_path_add_new">Add new …</string>
+    <string name="todo_path_add_new_title">Add New Folder</string>
+    <string name="todo_path_add_new_ok_button">Add</string>
+    <string name="todo_path_add_new_cancel_button">Cancel</string>
+    <string name="todo_path_loading">Loading folders…</string>
     <string name="todo_path_default">/todo</string>
     <string name="dropbox_settings_header">Dropbox</string>
     <string name="todotxt_settings_header">todo.txt</string>

@@ -99,4 +99,5 @@ public interface RemoteClient {
 	boolean isAvailable();
 
 	List<RemoteFolder> getSubFolders(String path);
+	RemoteFolder getRootFolder();
 }
