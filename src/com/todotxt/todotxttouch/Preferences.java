@@ -49,7 +49,7 @@ public class Preferences extends PreferenceActivity {
 
 	private Preference aboutDialog;
 	private Preference logoutDialog;
-	private Preference mLocationPreference;
+	private TodoLocationPreference mLocationPreference;
 	private ListPreference periodicSync;
 	private static final int ABOUT_DIALOG = 1;
 	private static final int LOGOUT_DIALOG = 2;
@@ -70,18 +70,21 @@ public class Preferences extends PreferenceActivity {
 				.prepend_date_pref_key())).setChecked(m_app.m_prefs
 				.isPrependDateEnabled());
 
-		mLocationPreference = findPreference(m_app.m_prefs.todo_path_key());
-		mLocationPreference.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-			@Override
-			public boolean onPreferenceClick(Preference preference) {
-				if(m_app.m_prefs.needToPush()) {
-					showDialog(PATH_WARNING_DIALOG);
-				} else {
-					showFilePicker();
-				}
-				return true;
-			}
-		});
+		mLocationPreference = (TodoLocationPreference)findPreference(m_app.m_prefs.todo_path_key());
+		mLocationPreference.setApplication(m_app);
+		mLocationPreference.setDisplayWarning(m_app.m_prefs.needToPush());
+//		mLocationPreference.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+//			@Override
+//			public boolean onPreferenceClick(Preference preference) {
+////				if(m_app.m_prefs.needToPush()) {
+////					showDialog(PATH_WARNING_DIALOG);
+////				} else {
+////					showFilePicker();
+////				}
+////				return true;
+//				return false;
+//			}
+//		});
 		
 		PackageInfo packageInfo;
 		try {
