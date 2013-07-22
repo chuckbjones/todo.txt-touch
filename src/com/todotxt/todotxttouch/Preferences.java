@@ -39,7 +39,6 @@ import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceScreen;
 import android.text.Spannable;
-import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
 
@@ -52,8 +51,6 @@ public class Preferences extends PreferenceActivity {
 	private ListPreference periodicSync;
 	private static final int ABOUT_DIALOG = 1;
 	private static final int LOGOUT_DIALOG = 2;
-	private static final int PATH_WARNING_DIALOG = 3;
-	private static final int PATH_ACTIVITY = 1;
 	TodoApplication m_app;
 
 	private String version;
@@ -72,18 +69,6 @@ public class Preferences extends PreferenceActivity {
 		mLocationPreference = (TodoLocationPreference)findPreference(m_app.m_prefs.todo_path_key());
 		mLocationPreference.setApplication(m_app);
 		mLocationPreference.setDisplayWarning(m_app.m_prefs.needToPush());
-//		mLocationPreference.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-//			@Override
-//			public boolean onPreferenceClick(Preference preference) {
-////				if(m_app.m_prefs.needToPush()) {
-////					showDialog(PATH_WARNING_DIALOG);
-////				} else {
-////					showFilePicker();
-////				}
-////				return true;
-//				return false;
-//			}
-//		});
 		
 		PackageInfo packageInfo;
 		try {
@@ -110,22 +95,6 @@ public class Preferences extends PreferenceActivity {
 						return true;
 					}
 				});
-	}
-
-//	protected void showFilePicker() {
-//		Intent intent = new Intent(this, PathActivity.class);
-//		startActivityForResult(intent, PATH_ACTIVITY);
-//	}
-//	
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		if (requestCode == PATH_ACTIVITY && resultCode == RESULT_OK) {
-			// save preference if not the same as current value
-			String path = data.getStringExtra(m_app.m_prefs.todo_path_key());
-			if (!m_app.m_prefs.getTodoFilePath().equalsIgnoreCase(path)) {
-				m_app.m_prefs.storeTodoFilePath(path);
-			}
-		}
 	}
 
 	private void setPeriodicSummary(Object newValue) {
@@ -214,30 +183,6 @@ public class Preferences extends PreferenceActivity {
 				}
 			});
 			return logoutAlert.create();
-		} else if (id == PATH_WARNING_DIALOG) {
-			AlertDialog.Builder pathAlert = new AlertDialog.Builder(this);
-			pathAlert.setTitle(R.string.todo_path_title);
-			
-			SpannableString ss = new SpannableString(getString(R.string.todo_path_warning));
-			ss.setSpan(new ForegroundColorSpan(Color.RED), 0, ss.length(),
-					Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-			pathAlert.setMessage(ss);
-//			pathAlert.setPositiveButton(R.string.todo_path_warning_override,
-//					new DialogInterface.OnClickListener() {
-//						@Override
-////						public void onClick(DialogInterface dialog, int which) {
-////							showFilePicker();
-////						}
-//					});
-			pathAlert.setNegativeButton(R.string.cancel, null);
-			pathAlert.setOnCancelListener(new OnCancelListener() {
-				@SuppressWarnings("deprecation")
-				@Override
-				public void onCancel(DialogInterface dialog) {
-					removeDialog(id);
-				}
-			});
-			return pathAlert.create();
 		}
 		return null;
 	}

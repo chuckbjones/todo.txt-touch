@@ -242,13 +242,6 @@ public class TodoPreferences {
 		return m_prefs.getString(todo_path_key, todo_path_default);
 	}
 
-	public void storeTodoFilePath(String path) {
-		Editor editor = m_prefs.edit();
-		editor.putString(todo_path_key, path);
-		editor.commit();
-	}
-
-
 	/*
 	 * 
 	 *  Utility methods go here 
