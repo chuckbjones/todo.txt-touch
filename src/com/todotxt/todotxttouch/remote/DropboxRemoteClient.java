@@ -154,10 +154,12 @@ class DropboxRemoteClient implements RemoteClient {
 
 		DropboxFile todoFile = new DropboxFile(
 				getTodoFileRemotePathAndFilename(), TODO_TXT_TMP_FILE,
-				sharedPreferences.getFileRevision(TodoPreferences.PREF_TODO_REV));
+				sharedPreferences
+						.getFileRevision(TodoPreferences.PREF_TODO_REV));
 		DropboxFile doneFile = new DropboxFile(
 				getDoneFileRemotePathAndFilename(), DONE_TXT_TMP_FILE,
-				sharedPreferences.getFileRevision(TodoPreferences.PREF_DONE_REV));
+				sharedPreferences
+						.getFileRevision(TodoPreferences.PREF_DONE_REV));
 		ArrayList<DropboxFile> dropboxFiles = new ArrayList<DropboxFile>(2);
 		dropboxFiles.add(todoFile);
 		dropboxFiles.add(doneFile);
@@ -170,11 +172,13 @@ class DropboxRemoteClient implements RemoteClient {
 		File downloadedDoneFile = null;
 		if (todoFile.getStatus() == DropboxFileStatus.SUCCESS) {
 			downloadedTodoFile = todoFile.getLocalFile();
-			sharedPreferences.storeFileRevision(TodoPreferences.PREF_TODO_REV, todoFile.getLoadedMetadata().rev);
+			sharedPreferences.storeFileRevision(TodoPreferences.PREF_TODO_REV,
+					todoFile.getLoadedMetadata().rev);
 		}
 		if (doneFile.getStatus() == DropboxFileStatus.SUCCESS) {
 			downloadedDoneFile = doneFile.getLocalFile();
-			sharedPreferences.storeFileRevision(TodoPreferences.PREF_DONE_REV, doneFile.getLoadedMetadata().rev);
+			sharedPreferences.storeFileRevision(TodoPreferences.PREF_DONE_REV,
+					doneFile.getLoadedMetadata().rev);
 		}
 
 		return new PullTodoResult(downloadedTodoFile, downloadedDoneFile);
@@ -186,13 +190,15 @@ class DropboxRemoteClient implements RemoteClient {
 		if (todoFile != null) {
 			dropboxFiles.add(new DropboxFile(
 					getTodoFileRemotePathAndFilename(), todoFile,
-					sharedPreferences.getFileRevision(TodoPreferences.PREF_TODO_REV)));
+					sharedPreferences
+							.getFileRevision(TodoPreferences.PREF_TODO_REV)));
 		}
 
 		if (doneFile != null) {
 			dropboxFiles.add(new DropboxFile(
 					getDoneFileRemotePathAndFilename(), doneFile,
-					sharedPreferences.getFileRevision(TodoPreferences.PREF_DONE_REV)));
+					sharedPreferences
+							.getFileRevision(TodoPreferences.PREF_DONE_REV)));
 		}
 
 		DropboxFileUploader uploader = new DropboxFileUploader(dropboxApi,
@@ -203,14 +209,16 @@ class DropboxRemoteClient implements RemoteClient {
 			if (dropboxFiles.size() > 0) {
 				DropboxFile todoDropboxFile = dropboxFiles.get(0);
 				if (todoDropboxFile.getStatus() == DropboxFileStatus.SUCCESS) {
-					sharedPreferences.storeFileRevision(TodoPreferences.PREF_TODO_REV,
+					sharedPreferences.storeFileRevision(
+							TodoPreferences.PREF_TODO_REV,
 							todoDropboxFile.getLoadedMetadata().rev);
 				}
 			}
 			if (dropboxFiles.size() > 1) {
 				DropboxFile doneDropboxFile = dropboxFiles.get(1);
 				if (doneDropboxFile.getStatus() == DropboxFileStatus.SUCCESS) {
-					sharedPreferences.storeFileRevision(TodoPreferences.PREF_DONE_REV,
+					sharedPreferences.storeFileRevision(
+							TodoPreferences.PREF_DONE_REV,
 							doneDropboxFile.getLoadedMetadata().rev);
 				}
 			}
@@ -283,29 +291,21 @@ class DropboxRemoteClient implements RemoteClient {
 			Entry metadata = dropboxApi.metadata(path, 0, null, true, null);
 			Log.d(TAG, "num entries returned: " + metadata.contents.size());
 			for (Entry e : metadata.contents) {
-				if(e.isDir && !e.isDeleted) {
+				if (e.isDir && !e.isDeleted) {
 					results.add(new DropboxRemoteFolder(e));
 				}
 			}
 		} catch (DropboxException e) {
 			Log.e(TAG, "Error getting folders for path: " + path);
-			throw new RemoteException("Failed to get folder listing from Dropbox", e);
+			throw new RemoteException(
+					"Failed to get folder listing from Dropbox", e);
 		}
 		return results;
 	}
 
 	@Override
-	public RemoteFolder getRootFolder() {
-		return new RemoteFolder() {
-			@Override
-			public String getPath() {
-				return "/";
-			}
-			@Override
-			public String getName() {
-				return "Dropbox";
-			}
-		};
+	public RemoteFolder getFolder(final String path) {
+		return new DropboxRemoteFolder(path);		
 	}
 
 }

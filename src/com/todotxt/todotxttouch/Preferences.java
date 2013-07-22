@@ -25,8 +25,8 @@ package com.todotxt.todotxttouch;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.DialogInterface.OnCancelListener;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.graphics.Color;
@@ -36,7 +36,6 @@ import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceScreen;
 import android.text.Spannable;
@@ -113,11 +112,11 @@ public class Preferences extends PreferenceActivity {
 				});
 	}
 
-	protected void showFilePicker() {
-		Intent intent = new Intent(this, PathActivity.class);
-		startActivityForResult(intent, PATH_ACTIVITY);
-	}
-	
+//	protected void showFilePicker() {
+//		Intent intent = new Intent(this, PathActivity.class);
+//		startActivityForResult(intent, PATH_ACTIVITY);
+//	}
+//	
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		if (requestCode == PATH_ACTIVITY && resultCode == RESULT_OK) {
@@ -223,13 +222,13 @@ public class Preferences extends PreferenceActivity {
 			ss.setSpan(new ForegroundColorSpan(Color.RED), 0, ss.length(),
 					Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 			pathAlert.setMessage(ss);
-			pathAlert.setPositiveButton(R.string.todo_path_warning_override,
-					new DialogInterface.OnClickListener() {
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							showFilePicker();
-						}
-					});
+//			pathAlert.setPositiveButton(R.string.todo_path_warning_override,
+//					new DialogInterface.OnClickListener() {
+//						@Override
+////						public void onClick(DialogInterface dialog, int which) {
+////							showFilePicker();
+////						}
+//					});
 			pathAlert.setNegativeButton(R.string.cancel, null);
 			pathAlert.setOnCancelListener(new OnCancelListener() {
 				@SuppressWarnings("deprecation")

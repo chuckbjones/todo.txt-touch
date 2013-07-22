@@ -91,6 +91,7 @@ You should have received a copy of the GNU General Public License along with Tod
     <string name="todo_path_add_new_ok_button">Add</string>
     <string name="todo_path_add_new_cancel_button">Cancel</string>
     <string name="todo_path_loading">Loading folders…</string>
+    <string name="todo_path_empty">Failed to load folder list from Dropbox</string>
     <string name="todo_path_default">/todo</string>
     <string name="dropbox_settings_header">Dropbox</string>
     <string name="todotxt_settings_header">todo.txt</string>

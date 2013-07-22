@@ -8,7 +8,23 @@ public interface RemoteFolder {
 	String getName();
 	
 	/**
-	 * @return The full path of the folder
+	 * @return The full path of the folder.
 	 */
 	String getPath();
+
+	/**
+	 * @return The name of the parent without any path information.
+	 */
+	String getParentName();
+
+	/**
+	 * @return The full path of the folder's parent.
+	 */
+	String getParentPath();
+
+	/**
+	 * @return True if this is not a root folder.
+	 */
+	boolean hasParent();
+
 }

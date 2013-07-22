@@ -1,10 +1,11 @@
 package com.todotxt.todotxttouch;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import android.app.AlertDialog.Builder;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Parcel;
@@ -23,6 +24,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.todotxt.todotxttouch.remote.RemoteFolder;
+import com.todotxt.todotxttouch.util.Tree;
 
 public class TodoLocationPreference extends DialogPreference {
 	final static String TAG = TodoLocationPreference.class.getSimpleName();
@@ -30,17 +32,18 @@ public class TodoLocationPreference extends DialogPreference {
 	private TodoApplication mApp;
 	private boolean mWarningMode = false;
 	private boolean mDisplayWarning = false;
-	private int mClickedDialogEntryIndex;
 	private ArrayAdapter<String> mAdapter;
-	private Tree<RemoteFolder> mDirectoryTree;
+	private String mInitialPath;
+	private Tree<RemoteFolder> mRootFolder;
 	private Tree<RemoteFolder> mCurrentSelection;
 
 	private ListView mListView;
+	private View mEmptyView;
 	private TextView mCurrentFolderTextView;
-	
+
 	public TodoLocationPreference(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		setDialogLayoutResource(R.layout.path_activity);
+		setDialogLayoutResource(R.layout.todo_location_dialog);
 	}
 
 	public boolean shouldDisplayWarning() {
@@ -84,10 +87,28 @@ public class TodoLocationPreference extends DialogPreference {
 			return;
 		}
 
-		// If we are already displaying the default layout
-		// do the default processing (either persist the change
-		// or cancel, depending on which button was pressed)
-		super.onDialogClosed(positiveResult);
+		// If we are already displaying the default layout then either persist
+		// the change or cancel, depending on which button was pressed
+		if (positiveResult && mCurrentSelection != null) {
+			String value = mCurrentSelection.getData().getPath();
+			if (callChangeListener(value)) {
+				persistString(value);
+			}
+		}
+		mInitialPath = null;
+	}
+
+	@Override
+	protected Object onGetDefaultValue(TypedArray a, int index) {
+		return a.getString(index);
+	}
+
+	@Override
+	protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
+		if (mInitialPath == null) {
+			mInitialPath = restoreValue ? getPersistedString(null)
+					: (String) defaultValue;
+		}
 	}
 
 	@Override
@@ -103,28 +124,36 @@ public class TodoLocationPreference extends DialogPreference {
 	}
 
 	@Override
+	protected View onCreateDialogView() {
+		if (mWarningMode) {
+			return null;
+		}
+		return super.onCreateDialogView();
+	}
+	
+	@Override
 	protected void onBindDialogView(View view) {
 		super.onBindDialogView(view);
 
 		mCurrentFolderTextView = (TextView) view.findViewById(R.id.folder_name);
 		mListView = (ListView) view.findViewById(android.R.id.list);
+		mEmptyView = view.findViewById(android.R.id.empty);
 
 		mAdapter = new ArrayAdapter<String>(getContext(),
 				android.R.layout.simple_list_item_1);
-
 		mListView.setAdapter(mAdapter);
+		mListView.setEmptyView(mEmptyView);
 
-		mDirectoryTree = new Tree<RemoteFolder>(mApp.getRemoteClientManager()
-				.getRemoteClient().getRootFolder());
-		setCurrentSelection(mDirectoryTree);
-		
+		// initialize the view
+		initFolderTree();
+		selectFolder(mCurrentSelection);
+
 		mListView.setOnItemClickListener(new OnItemClickListener() {
 			public void onItemClick(AdapterView<?> parent, View view,
 					int position, long id) {
-				mClickedDialogEntryIndex = position;				
-				if (position == 0 && mCurrentSelection.getParent() != null) {
+				if (position == 0 && mCurrentSelection.getData().hasParent()) {
 					// go back up to previous directory
-					setCurrentSelection(mCurrentSelection.getParent());
+					upToParent();
 				} else if (position == mAdapter.getCount() - 1) {
 					// FIXME: add new
 					// showDialog(ADD_NEW);
@@ -132,93 +161,75 @@ public class TodoLocationPreference extends DialogPreference {
 					// drill down to this directory
 					int index = mCurrentSelection.getParent() == null ? position
 							: position - 1;
-					setCurrentSelection(mCurrentSelection.getChild(index));
+					selectFolder(mCurrentSelection.getChild(index));
 				}
 			}
 		});
 	}
 
-	// @Override
-	// protected void showDialog(Bundle state) {
-	// super.showDialog(state);
-	// Dialog dialog = getDialog();
-	// DisplayMetrics displaymetrics = new DisplayMetrics();
-	// dialog.getWindow().getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-	// int height = (int) (displaymetrics.heightPixels * 0.67);
-	//
-	// WindowManager.LayoutParams params = dialog.getWindow().getAttributes();
-	// params.height = height;
-	// dialog.getWindow().setAttributes(params);
-	// }
-
-	class Tree<E> {
-		private Tree<E> parent = null;
-		private List<Tree<E>> children = null;
-		private E data;
-
-		public Tree(E data) {
-			this.data = data;
+	private void initFolderTree() {
+		if (mRootFolder == null) {
+			mRootFolder = mCurrentSelection = new Tree<RemoteFolder>(mApp
+					.getRemoteClientManager().getRemoteClient()
+					.getFolder(mInitialPath));
+		} else {
+			// use initialPath to find the correct folder in the tree
+			Tree<RemoteFolder> tree = findFolderInTree(mRootFolder,
+					mInitialPath);
+			if (tree != null) {
+				mCurrentSelection = tree;
+			}
 		}
 
-		public Tree(Tree<E> parent, E data) {
-			this.parent = parent;
-			this.data = data;
+	}
+
+	private Tree<RemoteFolder> findFolderInTree(Tree<RemoteFolder> tree,
+			String path) {
+		if (tree.getData().getPath().equalsIgnoreCase(path)) {
+			return tree;
 		}
 
-		public Tree<E> addChild(E data) {
-			Tree<E> child = new Tree<E>(this, data);
-			if (children == null)
-				children = new ArrayList<Tree<E>>();
-			children.add(child);
-			return child;
+		if (tree.isLoaded()) {
+			for (Tree<RemoteFolder> child : tree.getChildren()) {
+				Tree<RemoteFolder> res = findFolderInTree(child, path);
+				if (res != null) {
+					return res;
+				}
+			}
 		}
+		return null;
+	}
 
-		public E getData() {
-			return data;
+	private void upToParent() {
+		if (mCurrentSelection.getParent() != null) {
+			selectFolder(mCurrentSelection.getParent());
+			return;
 		}
-
-		public Tree<E> getParent() {
-			return parent;
-		}
-
-		public boolean isLoaded() {
-			return children != null;
-		}
-
-		public void setLoaded() {
-			if (children == null)
-				children = new ArrayList<Tree<E>>();
-		}
-
-		public List<Tree<E>> getChildren() {
-			return children;
-		}
-
-		public Tree<E> getChild(int position) {
-			return children.get(position);
-		}
+		RemoteFolder parent = mApp.getRemoteClientManager().getRemoteClient()
+				.getFolder(mCurrentSelection.getData().getParentPath());
+		mRootFolder = new Tree<RemoteFolder>(parent);
+		selectFolder(mRootFolder);
 	}
 
 	private void setCurrentSelection(Tree<RemoteFolder> folder) {
 		mCurrentSelection = folder;
 		mCurrentFolderTextView.setText(folder.getData().getName());
-		populateListView();
+		populateListView(folder.getChildren());
 	}
 
-	private void populateListView() {
-		if (!mCurrentSelection.isLoaded()) {
-			getRemoteDirectoryListing();
+	private void selectFolder(Tree<RemoteFolder> folder) {
+		if (!folder.isLoaded()) {
+			getRemoteDirectoryListing(folder);
 		} else {
-			populateListView(mCurrentSelection.getChildren());
+			setCurrentSelection(folder);
 		}
 	}
 
 	private void populateListView(List<Tree<RemoteFolder>> list) {
 		mAdapter.clear();
-		Tree<RemoteFolder> parent = mCurrentSelection.getParent();
-		if (parent != null) {
+		if (mCurrentSelection.getData().hasParent()) {
 			mAdapter.add(getContext().getString(R.string.todo_path_prev_folder,
-					parent.getData().getName()));
+					mCurrentSelection.getData().getParentName()));
 		}
 		if (list != null) {
 			for (Tree<RemoteFolder> folder : list) {
@@ -228,38 +239,62 @@ public class TodoLocationPreference extends DialogPreference {
 		mAdapter.add(getContext().getString(R.string.todo_path_add_new));
 	}
 
-	private void getRemoteDirectoryListing() {
+	private void getRemoteDirectoryListing(final Tree<RemoteFolder> folder) {
 		new AsyncTask<Void, Void, List<RemoteFolder>>() {
-
 			@Override
 			protected void onPreExecute() {
-				// showProgressDialog(getContext().getString(R.string.todo_path_loading));
+				showProgressIndicator();
+				mAdapter.clear();
 			}
 
 			@Override
 			protected List<RemoteFolder> doInBackground(Void... params) {
 				try {
-					return mApp
-							.getRemoteClientManager()
-							.getRemoteClient()
-							.getSubFolders(
-									mCurrentSelection.getData().getPath());
+					return mApp.getRemoteClientManager().getRemoteClient()
+							.getSubFolders(folder.getData().getPath());
 				} catch (Exception e) {
 					Log.d(TAG, "failed to get remote folder list", e);
 				}
-				return new ArrayList<RemoteFolder>();
+				return null;
 			}
 
 			@Override
 			protected void onPostExecute(List<RemoteFolder> result) {
-				// PathActivity.currentActivityPointer.dismissProgressDialog();
-				for (RemoteFolder folder : result) {
-					mCurrentSelection.addChild(folder);
+				Dialog dialog = getDialog();
+				if (dialog == null || !dialog.isShowing()) {
+					return;
 				}
-				mCurrentSelection.setLoaded();
-				populateListView(mCurrentSelection.getChildren());
+
+				if (result == null) {
+					showErrorMessage();
+					return;
+				}
+
+				for (RemoteFolder child : result) {
+					if (mCurrentSelection.getData().equals(child)) {
+						// if we just loaded the parent of our current folder
+						// add it as a child so we can keep it's children
+						folder.addChild(mCurrentSelection);
+					} else {
+						folder.addChild(child);
+					}
+				}
+
+				folder.setLoaded();
+				setCurrentSelection(folder);
 			}
 		}.execute();
+	}
+
+	protected void showErrorMessage() {
+		mEmptyView.findViewById(R.id.loading_spinner).setVisibility(View.GONE);
+		mEmptyView.findViewById(R.id.empty_text).setVisibility(View.VISIBLE);
+	}
+
+	protected void showProgressIndicator() {
+		mEmptyView.findViewById(R.id.empty_text).setVisibility(View.GONE);
+		mEmptyView.findViewById(R.id.loading_spinner).setVisibility(
+				View.VISIBLE);
 	}
 
 	// protected boolean needInputMethod() {
@@ -274,6 +309,12 @@ public class TodoLocationPreference extends DialogPreference {
 
 		final SavedState myState = new SavedState(superState);
 		myState.warningMode = mWarningMode;
+		if (mCurrentSelection != null) {
+			myState.initialPath = mCurrentSelection.getData().getPath();
+			//FIXME: need to save the entire tree.
+		} else {
+			myState.initialPath = mInitialPath;
+		}
 		return myState;
 	}
 
@@ -287,23 +328,27 @@ public class TodoLocationPreference extends DialogPreference {
 
 		SavedState myState = (SavedState) state;
 		mWarningMode = myState.warningMode;
+		mInitialPath = myState.initialPath;
 		super.onRestoreInstanceState(myState.getSuperState());
 	}
 
 	private static class SavedState extends BaseSavedState {
 		boolean warningMode;
+		String initialPath;
 
 		public SavedState(Parcel source) {
 			super(source);
 			boolean[] array = new boolean[1];
 			source.readBooleanArray(array);
 			warningMode = array[0];
+			initialPath = source.readString();
 		}
 
 		@Override
 		public void writeToParcel(Parcel dest, int flags) {
 			super.writeToParcel(dest, flags);
 			dest.writeBooleanArray(new boolean[] { warningMode });
+			dest.writeString(initialPath);
 		}
 
 		public SavedState(Parcelable superState) {
