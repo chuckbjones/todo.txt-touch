@@ -30,18 +30,21 @@ public class Path {
 				path = path.substring(0, path.length() - 1);
 			}
 			int ind = path.lastIndexOf('/');
-	        return path.substring(ind + 1, path.length());
+			return path.substring(ind + 1, path.length());
 		}
 		return "";
 	}
-	
+
 	public static String parentPath(String path) {
 		// adapted from DropboxAPI.java v1.5.4
 		if (Strings.isBlank(path) || path.equals("/")) {
-            return "";
-        } else {
-            int ind = path.lastIndexOf('/');
-            return path.substring(0, ind + 1);
-        }
+			return "";
+		} else {
+			if (path.endsWith("/")) {
+				path = path.substring(0, path.length() - 1);
+			}
+			int ind = path.lastIndexOf('/');
+			return path.substring(0, ind + 1);
+		}
 	}
 }

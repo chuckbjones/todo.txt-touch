@@ -1,5 +1,6 @@
 package com.todotxt.todotxttouch;
 
+import java.io.File;
 import java.util.List;
 
 import android.app.AlertDialog.Builder;
@@ -20,6 +21,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -29,8 +31,12 @@ import com.todotxt.todotxttouch.util.Tree;
 public class TodoLocationPreference extends DialogPreference {
 	final static String TAG = TodoLocationPreference.class.getSimpleName();
 
+	enum DisplayMode {
+		NORMAL, WARNING, ADD_NEW
+	}
+
 	private TodoApplication mApp;
-	private boolean mWarningMode = false;
+	private DisplayMode mDisplayMode = DisplayMode.NORMAL;
 	private boolean mDisplayWarning = false;
 	private ArrayAdapter<String> mAdapter;
 	private String mInitialPath;
@@ -39,6 +45,8 @@ public class TodoLocationPreference extends DialogPreference {
 
 	private ListView mListView;
 	private View mEmptyView;
+	private View mListFrame;
+	private EditText mEditText;
 	private TextView mCurrentFolderTextView;
 
 	public TodoLocationPreference(Context context, AttributeSet attrs) {
@@ -72,7 +80,8 @@ public class TodoLocationPreference extends DialogPreference {
 		// This method displays the dialog.
 		// When mDisplayWarning is set, we want to display
 		// a warning message instead of the actual dialog
-		mWarningMode = mDisplayWarning;
+		mDisplayMode = mDisplayWarning ? DisplayMode.WARNING
+				: DisplayMode.NORMAL;
 		super.onClick();
 	}
 
@@ -81,20 +90,23 @@ public class TodoLocationPreference extends DialogPreference {
 		// If we are displaying the warning message and the user
 		// clicked "I'm feeling dangerous", then redisplay the
 		// dialog with the default layout
-		if (mWarningMode && positiveResult) {
-			mWarningMode = false;
+		if (mDisplayMode == DisplayMode.WARNING && positiveResult) {
+			mDisplayMode = DisplayMode.NORMAL;
 			showDialog(null);
 			return;
 		}
 
-		// If we are already displaying the default layout then either persist
-		// the change or cancel, depending on which button was pressed
-		if (positiveResult && mCurrentSelection != null) {
+		if (mCurrentSelection != null && positiveResult) {
 			String value = mCurrentSelection.getData().getPath();
+			if (mDisplayMode == DisplayMode.ADD_NEW) {
+				value = new File(value, mEditText.getText().toString())
+						.toString();
+			}
 			if (callChangeListener(value)) {
 				persistString(value);
 			}
 		}
+
 		mInitialPath = null;
 	}
 
@@ -115,7 +127,7 @@ public class TodoLocationPreference extends DialogPreference {
 	protected void onPrepareDialogBuilder(Builder builder) {
 		// Display the warning message if necessary.
 		// Otherwise, just use the default layout.
-		if (mWarningMode) {
+		if (mDisplayMode == DisplayMode.WARNING) {
 			builder.setMessage(getWarningMessage());
 			builder.setPositiveButton(R.string.todo_path_warning_override, this);
 		} else {
@@ -125,12 +137,12 @@ public class TodoLocationPreference extends DialogPreference {
 
 	@Override
 	protected View onCreateDialogView() {
-		if (mWarningMode) {
+		if (mDisplayMode == DisplayMode.WARNING) {
 			return null;
 		}
 		return super.onCreateDialogView();
 	}
-	
+
 	@Override
 	protected void onBindDialogView(View view) {
 		super.onBindDialogView(view);
@@ -138,6 +150,16 @@ public class TodoLocationPreference extends DialogPreference {
 		mCurrentFolderTextView = (TextView) view.findViewById(R.id.folder_name);
 		mListView = (ListView) view.findViewById(android.R.id.list);
 		mEmptyView = view.findViewById(android.R.id.empty);
+		mListFrame = view.findViewById(R.id.list_frame);
+		mEditText = (EditText) view.findViewById(R.id.add_new);
+
+		if (mDisplayMode == DisplayMode.ADD_NEW) {
+			mEditText.setVisibility(View.VISIBLE);
+			mListFrame.setVisibility(View.GONE);
+		} else {
+			mEditText.setVisibility(View.GONE);
+			mListFrame.setVisibility(View.VISIBLE);
+		}
 
 		mAdapter = new ArrayAdapter<String>(getContext(),
 				android.R.layout.simple_list_item_1);
@@ -155,8 +177,11 @@ public class TodoLocationPreference extends DialogPreference {
 					// go back up to previous directory
 					upToParent();
 				} else if (position == mAdapter.getCount() - 1) {
-					// FIXME: add new
-					// showDialog(ADD_NEW);
+					// signal that AddNew was clicked
+					mDisplayMode = DisplayMode.ADD_NEW;
+					mEditText.setVisibility(View.VISIBLE);
+					mListFrame.setVisibility(View.GONE);
+					mEditText.requestFocus();
 				} else {
 					// drill down to this directory
 					int index = mCurrentSelection.getParent() == null ? position
@@ -180,7 +205,6 @@ public class TodoLocationPreference extends DialogPreference {
 				mCurrentSelection = tree;
 			}
 		}
-
 	}
 
 	private Tree<RemoteFolder> findFolderInTree(Tree<RemoteFolder> tree,
@@ -297,21 +321,15 @@ public class TodoLocationPreference extends DialogPreference {
 				View.VISIBLE);
 	}
 
-	// protected boolean needInputMethod() {
-	// // We want the input method to show, if possible, when edit dialog is
-	// // displayed, but not when warning message is displayed
-	// return !mWarningMode;
-	// }
-
 	@Override
 	protected Parcelable onSaveInstanceState() {
 		final Parcelable superState = super.onSaveInstanceState();
 
 		final SavedState myState = new SavedState(superState);
-		myState.warningMode = mWarningMode;
+		myState.displayMode = mDisplayMode.name();
 		if (mCurrentSelection != null) {
 			myState.initialPath = mCurrentSelection.getData().getPath();
-			//FIXME: need to save the entire tree.
+			// FIXME: need to save the entire tree.
 		} else {
 			myState.initialPath = mInitialPath;
 		}
@@ -327,27 +345,25 @@ public class TodoLocationPreference extends DialogPreference {
 		}
 
 		SavedState myState = (SavedState) state;
-		mWarningMode = myState.warningMode;
+		mDisplayMode = DisplayMode.valueOf(myState.displayMode);
 		mInitialPath = myState.initialPath;
 		super.onRestoreInstanceState(myState.getSuperState());
 	}
 
 	private static class SavedState extends BaseSavedState {
-		boolean warningMode;
+		String displayMode;
 		String initialPath;
 
 		public SavedState(Parcel source) {
 			super(source);
-			boolean[] array = new boolean[1];
-			source.readBooleanArray(array);
-			warningMode = array[0];
+			displayMode = source.readString();
 			initialPath = source.readString();
 		}
 
 		@Override
 		public void writeToParcel(Parcel dest, int flags) {
 			super.writeToParcel(dest, flags);
-			dest.writeBooleanArray(new boolean[] { warningMode });
+			dest.writeString(displayMode);
 			dest.writeString(initialPath);
 		}
 

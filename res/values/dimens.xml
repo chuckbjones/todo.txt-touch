@@ -30,5 +30,5 @@ You should have received a copy of the GNU General Public License along with Tod
     <dimen name="actionbar_button_radius">4dip</dimen>
     <dimen name="tab_height">48dp</dimen>
     <dimen name="tab_side_padding">2dp</dimen>
-    <dimen name="path_dialog_height">540dp</dimen>
+    <dimen name="path_dialog_height">336dp</dimen>
 </resources>
